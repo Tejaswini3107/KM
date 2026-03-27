@@ -1,0 +1,17 @@
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/bin/Debug/net10.0/KacharaManagement.Business.deps.json
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/bin/Debug/net10.0/KacharaManagement.Business.dll
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/bin/Debug/net10.0/KacharaManagement.Business.pdb
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/bin/Debug/net10.0/KacharaManagement.Core.dll
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/bin/Debug/net10.0/KacharaManagement.Repository.dll
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/bin/Debug/net10.0/KacharaManagement.Core.pdb
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/bin/Debug/net10.0/KacharaManagement.Repository.pdb
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/KacharaManagement.Business.csproj.AssemblyReference.cache
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/KacharaManagement.Business.GeneratedMSBuildEditorConfig.editorconfig
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/KacharaManagement.Business.AssemblyInfoInputs.cache
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/KacharaManagement.Business.AssemblyInfo.cs
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/KacharaManagement.Business.csproj.CoreCompileInputs.cache
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/KacharaM.EE11E060.Up2Date
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/KacharaManagement.Business.dll
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/refint/KacharaManagement.Business.dll
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/KacharaManagement.Business.pdb
+/Users/tejaswini/Documents/KacharaManagement/KacharaManagement.Business/obj/Debug/net10.0/ref/KacharaManagement.Business.dll
