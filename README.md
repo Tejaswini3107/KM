@@ -58,3 +58,28 @@ This project is a .NET 10 backend for a smart waste management system. It integr
 
 ## License
 MIT License
+
+## Git Mirroring & Collaboration
+
+This repository is mirrored to:
+
+https://github.com/EpitechMscInternationalPromo2027/I-IOT-801-INT-8-1-smarttrashcans-2
+
+All changes are pushed to both the main and Epitech repositories. To manually mirror:
+
+```bash
+git remote add mirror https://github.com/EpitechMscInternationalPromo2027/I-IOT-801-INT-8-1-smarttrashcans-2
+git push --mirror mirror
+```
+
+## Troubleshooting
+
+- If you see a 500 Internal Server Error from any API endpoint:
+   - Check Railway logs for exception details.
+   - Ensure your Railway environment variables (especially DB connection) are set correctly.
+   - Confirm the database has data (e.g., for /api/history).
+   - For local debugging, run with `dotnet run --project KacharaManagement.API` and check console output.
+
+## Maintainers
+- Tejaswini3107
+- EpitechMscInternationalPromo2027
