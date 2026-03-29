@@ -32,7 +32,7 @@ jobs:
         run: dotnet publish KacharaManagement.API/KacharaManagement.API.csproj --configuration Release --output ./publish --no-restore
 
       - name: Deploy to Railway
-        uses: railwayapp/cli-action@v1
+        uses: railwayapp/railway-action@v1
         with:
           command: up
         env:
