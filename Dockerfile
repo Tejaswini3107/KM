@@ -6,6 +6,6 @@ RUN dotnet publish KacharaManagement.API/KacharaManagement.API.csproj -c Release
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:5000
+EXPOSE 5000
 ENTRYPOINT ["dotnet", "KacharaManagement.API.dll"]
