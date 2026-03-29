@@ -1,16 +1,18 @@
 # GitHub Actions workflow for .NET 10 deployment to Railway
-# This workflow builds and deploys your KacharaManagement.API project to Railway on every push to main.
+# This workflow deploys your KacharaManagement.API project to Railway only after CI passes.
 
 name: Deploy to Railway
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [".NET CI"]
+    types:
+      - completed
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,5 +38,5 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_ENVIRONMENT: production
-          RAILWAY_SERVICE: <your-railway-service-id>
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
           RAILWAY_ROOT_DIRECTORY: ./publish
