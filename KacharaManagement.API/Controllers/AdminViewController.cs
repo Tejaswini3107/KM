@@ -7,7 +7,6 @@ namespace KacharaManagement.API.Controllers
     {
         [HttpGet("login")]
         public IActionResult Login() => View("~/Views/Admin/Login.cshtml");
-
         [HttpGet("dashboard")]
         public IActionResult Dashboard() => View("~/Views/Admin/Dashboard.cshtml");
 
