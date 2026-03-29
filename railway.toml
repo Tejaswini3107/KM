@@ -1,0 +1,5 @@
+[build]
+command = "dotnet publish -c Release -o out KacharaManagement.API/KacharaManagement.API.csproj"
+
+[start]
+command = "dotnet KacharaManagement.API.dll"
