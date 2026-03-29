@@ -64,14 +64,14 @@ namespace KacharaManagement.API.Controllers
                 string s3 = request.S3 ?? string.Empty;
 
                 // Alert logic: s1 == "FULL" or s3 == "FLOOD!" (case-insensitive)
-                bool alert = s1.Equals("FULL", StringComparison.OrdinalIgnoreCase)
-                    || s3.Equals("FLOOD!", StringComparison.OrdinalIgnoreCase);
+                // Alert and needsTruck logic: true if any bin is FULL, DAMP, or DARK, or s3 is FLOOD! (case-insensitive)
+                bool isFull = s1.Equals("FULL", StringComparison.OrdinalIgnoreCase);
+                bool isDark = s2.Equals("DARK", StringComparison.OrdinalIgnoreCase);
+                bool isDamp = s3.Equals("DAMP", StringComparison.OrdinalIgnoreCase);
+                bool isFlood = s3.Equals("FLOOD!", StringComparison.OrdinalIgnoreCase);
 
-                // needsTruck logic: s1 != "EMPTY" && s2 != "BRIGHT" && s3 != "DRY" (case-insensitive)
-                bool needsTruck =
-                    !s1.Equals("EMPTY", StringComparison.OrdinalIgnoreCase)
-                    && !s2.Equals("BRIGHT", StringComparison.OrdinalIgnoreCase)
-                    && !s3.Equals("DRY", StringComparison.OrdinalIgnoreCase);
+                bool alert = isFull || isFlood || isDark || isDamp;
+                bool needsTruck = isFull || isFlood || isDark || isDamp;
 
                 // Set alert flag in request if not already set
                 if (request.Al == 0 && alert)
