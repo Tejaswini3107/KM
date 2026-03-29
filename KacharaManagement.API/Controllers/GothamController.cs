@@ -33,10 +33,12 @@ namespace KacharaManagement.API.Controllers
         public IActionResult Hello() => Ok(new HelloResponse());
 
         [HttpGet("update")]
-        public async Task<IActionResult> Update([FromQuery] UpdateRequest request)
+        public async Task<IActionResult> Update([FromQuery] UpdateRequest request)                       
         {
             try
             {
+                Console.WriteLine($"/api/update called. Request: {System.Text.Json.JsonSerializer.Serialize(request)}");
+
                 await _logRepo.AddAsync(new LogEntry
                 {
                     Level = "Info",
@@ -55,45 +57,58 @@ namespace KacharaManagement.API.Controllers
                     });
                     return Unauthorized(new { status = "ERROR", msg = "Invalid key" });
                 }
-               
+
+                string s1 = request.S1?.ToLowerInvariant() ?? string.Empty;
+                string s2 = request.S2?.ToLowerInvariant() ?? string.Empty;
+                string s3 = request.S3?.ToLowerInvariant() ?? string.Empty;
+
                 if(request.Al==0)
                 {
-                    // Alert logic
-                    if (request.S1 == "FULL" || request.S2 == "DARK" || request.S3 == "WET")
+                    // Alert logic (compare with lowercase)
+                    if (s1 == "full" || s2 == "dark" || s3 == "wet")
                     {
                         request.Al = 1;
                     }
-                
                 }
+
                 bool alert = request.Al == 1;
 
                 bool needsTruck = false;// needsTruck is true if any bin needs attention
 
-                if((request.S1 != "EMPTY" && request.S2 != "BRIGHT" && request.S3 != "DRY" )|| alert == true)
+                if((s1 != "empty" && s2 != "bright" && s3 != "dry" )|| alert == true)
                 {
                     needsTruck = true;
                 }
 
                 if(needsTruck != true)
                 {
-                  if(request.S1 != "EMPTY" || request.S2 != "BRIGHT" || request.S3 != "DRY")
-                  {
-                    needsTruck = true;
-                  }
+                    if(s1 != "empty" || s2 != "bright" || s3 != "dry")
+                    {
+                        needsTruck = true;
+                    }
                 }
 
                 var entity = new SensorHistory
                 {
                     Bin1Fill = request.B1,
-                    Bin1State = request.S1,
+                    Bin1State = s1,
                     Bin2Light = request.B2,
-                    Bin2State = request.S2,
+                    Bin2State = s2,
                     Bin3Water = request.B3,
-                    Bin3State = request.S3,
+                    Bin3State = s3,
                     Alert = request.Al,
                     NeedsTruck = needsTruck, // Save OR logic to DB
                     CreatedAt = DateTime.UtcNow
                 };
+
+                await _logRepo.AddAsync(new LogEntry
+                {
+                    Level = "Info",
+                    Message = "Attempting to insert SensorHistory",
+                    RequestBody = System.Text.Json.JsonSerializer.Serialize(entity),
+                    Source = "Update"
+                });
+
                 await _service.AddSensorHistoryAsync(entity);
 
                 var resp = new
@@ -141,12 +156,16 @@ namespace KacharaManagement.API.Controllers
                     return NotFound(new ErrorResponse { Msg = "No data" });
                 }
 
-                // LED color logic
-                string bin1Led = latest.Bin1Fill >= 90 ? "red" : latest.Bin1Fill >= 70 ? "yellow" : "green";
-                string bin2Led = latest.Bin2State == "DARK" ? "red" : latest.Bin2State == "DIM" ? "yellow" : "green";
-                string bin3Led = latest.Bin3State == "FLOOD!" ? "red" : latest.Bin3State == "DAMP" ? "yellow" : "green";
+                // LED color logic (case-insensitive)
+                string bin1State = latest.Bin1State?.ToLowerInvariant() ?? string.Empty;
+                string bin2State = latest.Bin2State?.ToLowerInvariant() ?? string.Empty;
+                string bin3State = latest.Bin3State?.ToLowerInvariant() ?? string.Empty;
 
-                bool needsTruck = latest.Bin1State != "EMPTY" && latest.Bin2State != "BRIGHT" && latest.Bin3State != "DRY";
+                string bin1Led = latest.Bin1Fill >= 90 ? "red" : latest.Bin1Fill >= 70 ? "yellow" : "green";
+                string bin2Led = bin2State == "dark" ? "red" : bin2State == "dim" ? "yellow" : "green";
+                string bin3Led = bin3State == "flood!" ? "red" : bin3State == "damp" ? "yellow" : "green";
+
+                bool needsTruck = bin1State != "empty" && bin2State != "bright" && bin3State != "dry";
 
                 var resp = new
                 {
