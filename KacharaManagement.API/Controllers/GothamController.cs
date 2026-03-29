@@ -58,34 +58,25 @@ namespace KacharaManagement.API.Controllers
                     return Unauthorized(new { status = "ERROR", msg = "Invalid key" });
                 }
 
-                string s1 = request.S1?.ToLowerInvariant() ?? string.Empty;
-                string s2 = request.S2?.ToLowerInvariant() ?? string.Empty;
-                string s3 = request.S3?.ToLowerInvariant() ?? string.Empty;
+                // Use the states as received (UPPERCASE from Arduino)
+                string s1 = request.S1 ?? string.Empty;
+                string s2 = request.S2 ?? string.Empty;
+                string s3 = request.S3 ?? string.Empty;
 
-                if(request.Al==0)
+                // Alert logic: s1 == "FULL" or s3 == "FLOOD!" (case-insensitive)
+                bool alert = s1.Equals("FULL", StringComparison.OrdinalIgnoreCase)
+                    || s3.Equals("FLOOD!", StringComparison.OrdinalIgnoreCase);
+
+                // needsTruck logic: s1 != "EMPTY" && s2 != "BRIGHT" && s3 != "DRY" (case-insensitive)
+                bool needsTruck =
+                    !s1.Equals("EMPTY", StringComparison.OrdinalIgnoreCase)
+                    && !s2.Equals("BRIGHT", StringComparison.OrdinalIgnoreCase)
+                    && !s3.Equals("DRY", StringComparison.OrdinalIgnoreCase);
+
+                // Set alert flag in request if not already set
+                if (request.Al == 0 && alert)
                 {
-                    // Alert logic (compare with lowercase)
-                    if (s1 == "full" || s2 == "dark" || s3 == "wet")
-                    {
-                        request.Al = 1;
-                    }
-                }
-
-                bool alert = request.Al == 1;
-
-                bool needsTruck = false;// needsTruck is true if any bin needs attention
-
-                if((s1 != "empty" && s2 != "bright" && s3 != "dry" )|| alert == true)
-                {
-                    needsTruck = true;
-                }
-
-                if(needsTruck != true)
-                {
-                    if(s1 != "empty" || s2 != "bright" || s3 != "dry")
-                    {
-                        needsTruck = true;
-                    }
+                    request.Al = 1;
                 }
 
                 var entity = new SensorHistory
@@ -97,7 +88,9 @@ namespace KacharaManagement.API.Controllers
                     Bin3Water = request.B3,
                     Bin3State = s3,
                     Alert = request.Al,
-                    NeedsTruck = needsTruck, // Save OR logic to DB
+                    NeedsTruck = needsTruck,
+                    Source = "Arduino",
+                    CreatedBy = "system",
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -156,16 +149,30 @@ namespace KacharaManagement.API.Controllers
                     return NotFound(new ErrorResponse { Msg = "No data" });
                 }
 
-                // LED color logic (case-insensitive)
-                string bin1State = latest.Bin1State?.ToLowerInvariant() ?? string.Empty;
-                string bin2State = latest.Bin2State?.ToLowerInvariant() ?? string.Empty;
-                string bin3State = latest.Bin3State?.ToLowerInvariant() ?? string.Empty;
 
-                string bin1Led = latest.Bin1Fill >= 90 ? "red" : latest.Bin1Fill >= 70 ? "yellow" : "green";
-                string bin2Led = bin2State == "dark" ? "red" : bin2State == "dim" ? "yellow" : "green";
-                string bin3Led = bin3State == "flood!" ? "red" : bin3State == "damp" ? "yellow" : "green";
+                // Use the states as stored (UPPERCASE from Arduino)
+                string bin1State = latest.Bin1State ?? string.Empty;
+                string bin2State = latest.Bin2State ?? string.Empty;
+                string bin3State = latest.Bin3State ?? string.Empty;
 
-                bool needsTruck = bin1State != "empty" && bin2State != "bright" && bin3State != "dry";
+                // LED color logic (case-insensitive for safety)
+                string bin1Led = bin1State.Equals("FULL", StringComparison.OrdinalIgnoreCase) ? "red"
+                    : bin1State.Equals("HALF", StringComparison.OrdinalIgnoreCase) ? "yellow"
+                    : bin1State.Equals("EMPTY", StringComparison.OrdinalIgnoreCase) ? "green" : "off";
+
+                string bin2Led = bin2State.Equals("DARK", StringComparison.OrdinalIgnoreCase) ? "red"
+                    : bin2State.Equals("DIM", StringComparison.OrdinalIgnoreCase) ? "yellow"
+                    : bin2State.Equals("BRIGHT", StringComparison.OrdinalIgnoreCase) ? "green" : "off";
+
+                string bin3Led = bin3State.Equals("FLOOD!", StringComparison.OrdinalIgnoreCase) ? "red"
+                    : bin3State.Equals("DAMP", StringComparison.OrdinalIgnoreCase) ? "yellow"
+                    : bin3State.Equals("DRY", StringComparison.OrdinalIgnoreCase) ? "green" : "off";
+
+                // needsTruck logic: s1 != "EMPTY" && s2 != "BRIGHT" && s3 != "DRY"
+                bool needsTruck =
+                    !bin1State.Equals("EMPTY", StringComparison.OrdinalIgnoreCase)
+                    && !bin2State.Equals("BRIGHT", StringComparison.OrdinalIgnoreCase)
+                    && !bin3State.Equals("DRY", StringComparison.OrdinalIgnoreCase);
 
                 var resp = new
                 {
