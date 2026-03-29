@@ -53,7 +53,33 @@ namespace KacharaManagement.API.Controllers
                         RequestBody = System.Text.Json.JsonSerializer.Serialize(request),
                         Source = "Update"
                     });
-                    return Unauthorized(new ErrorResponse { Msg = "Invalid key" });
+                    return Unauthorized(new { status = "ERROR", msg = "Invalid key" });
+                }
+               
+                if(request.Al==0)
+                {
+                    // Alert logic
+                    if (request.S1 == "FULL" || request.S2 == "DARK" || request.S3 == "WET")
+                    {
+                        request.Al = 1;
+                    }
+                
+                }
+                bool alert = request.Al == 1;
+
+                bool needsTruck = false;// needsTruck is true if any bin needs attention
+
+                if((request.S1 != "EMPTY" && request.S2 != "BRIGHT" && request.S3 != "DRY" )|| alert == true)
+                {
+                    needsTruck = true;
+                }
+
+                if(needsTruck != true)
+                {
+                  if(request.S1 != "EMPTY" || request.S2 != "BRIGHT" || request.S3 != "DRY")
+                  {
+                    needsTruck = true;
+                  }
                 }
 
                 var entity = new SensorHistory
@@ -65,12 +91,17 @@ namespace KacharaManagement.API.Controllers
                     Bin3Water = request.B3,
                     Bin3State = request.S3,
                     Alert = request.Al,
+                    NeedsTruck = needsTruck, // Save OR logic to DB
                     CreatedAt = DateTime.UtcNow
                 };
                 await _service.AddSensorHistoryAsync(entity);
-                // Example logic for truck/buzzer
-                bool needsTruck = request.B1 >= 90 || request.S1 == "FULL";
-                var resp = new UpdateResponse { Truck = needsTruck, Msg = "Data saved" };
+
+                var resp = new
+                {
+                    status = "OK",
+                    alert = alert,
+                    needsTruck = needsTruck,
+                };
                 await _logRepo.AddAsync(new LogEntry
                 {
                     Level = "Info",
