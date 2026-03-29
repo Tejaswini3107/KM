@@ -140,14 +140,22 @@ namespace KacharaManagement.API.Controllers
                     });
                     return NotFound(new ErrorResponse { Msg = "No data" });
                 }
-                var resp = new StatusResponse
+
+                // LED color logic
+                string bin1Led = latest.Bin1Fill >= 90 ? "red" : latest.Bin1Fill >= 70 ? "yellow" : "green";
+                string bin2Led = latest.Bin2State == "DARK" ? "red" : latest.Bin2State == "DIM" ? "yellow" : "green";
+                string bin3Led = latest.Bin3State == "FLOOD!" ? "red" : latest.Bin3State == "DAMP" ? "yellow" : "green";
+
+                bool needsTruck = latest.Bin1State != "EMPTY" && latest.Bin2State != "BRIGHT" && latest.Bin3State != "DRY";
+
+                var resp = new
                 {
-                    Bin1 = new BinData { Fill = latest.Bin1Fill, State = latest.Bin1State, Led = latest.Bin1Fill >= 90 ? "red" : latest.Bin1Fill >= 50 ? "yellow" : "green" },
-                    Bin2 = new BinData { Light = latest.Bin2Light, State = latest.Bin2State, Led = latest.Bin2Light < 300 ? "yellow" : "green" },
-                    Bin3 = new BinData { Water = latest.Bin3Water, State = latest.Bin3State, Led = latest.Bin3State == "FLOOD!" ? "red" : latest.Bin3State == "DAMP" ? "yellow" : "green" },
-                    Alert = latest.Alert == 1,
-                    NeedsTruck = latest.NeedsTruck,
-                    Timestamp = latest.CreatedAt.ToString("o")
+                    bin1 = new { fill = latest.Bin1Fill, state = latest.Bin1State, led = bin1Led },
+                    bin2 = new { light = latest.Bin2Light, state = latest.Bin2State, led = bin2Led },
+                    bin3 = new { water = latest.Bin3Water, state = latest.Bin3State, led = bin3Led },
+                    alert = latest.Alert == 1,
+                    needsTruck = needsTruck,
+                    timestamp = latest.CreatedAt.ToString("o")
                 };
                 await _logRepo.AddAsync(new LogEntry
                 {
