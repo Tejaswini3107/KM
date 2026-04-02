@@ -42,7 +42,7 @@ app.UseSwaggerUI();
 app.UseCors();
 
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers(); // For API endpoints
 app.MapDefaultControllerRoute(); // For MVC views
