@@ -3,6 +3,7 @@ using KacharaManagement.Repository.Interfaces;
 using KacharaManagement.Core.Entities;
 using KacharaManagement.Core;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
 namespace KacharaManagement.API.Controllers
 {
@@ -13,6 +14,8 @@ namespace KacharaManagement.API.Controllers
         private readonly IGothamService _service;
         private readonly ILogEntryRepository _logRepo;
         private readonly string _apiKey;
+        private static readonly object TruckMovementLock = new();
+        private static TruckMovementResponse TruckMovementState = new();
 
         public GothamController(IGothamService service, ILogEntryRepository logRepo, IConfiguration config)
         {
@@ -35,20 +38,12 @@ namespace KacharaManagement.API.Controllers
         [HttpGet("update")]
         public async Task<IActionResult> Update([FromQuery] UpdateRequest request)                       
         {
+            var stopwatch = Stopwatch.StartNew();
             try
             {
-                Console.WriteLine($"/api/update called. Request: {System.Text.Json.JsonSerializer.Serialize(request)}");
-
-                await _logRepo.AddAsync(new LogEntry
-                {
-                    Level = "Info",
-                    Message = "Update request received",
-                    RequestBody = System.Text.Json.JsonSerializer.Serialize(request),
-                    Source = "Update"
-                });
                 if (request.Key != _apiKey)
                 {
-                    await _logRepo.AddAsync(new LogEntry
+                    _ = _logRepo.AddAsync(new LogEntry
                     {
                         Level = "Warning",
                         Message = "Invalid API key",
@@ -63,15 +58,14 @@ namespace KacharaManagement.API.Controllers
                 string s2 = request.S2 ?? string.Empty;
                 string s3 = request.S3 ?? string.Empty;
 
-                // Alert logic: s1 == "FULL" or s3 == "FLOOD!" (case-insensitive)
-                // Alert and needsTruck logic: true if any bin is FULL, DAMP, or DARK, or s3 is FLOOD! (case-insensitive)
+                // Alert logic: Bin1 FULL, Bin2 BRIGHT, or Bin3 DAMP/FLOOD! all trigger alert
                 bool isFull = s1.Equals("FULL", StringComparison.OrdinalIgnoreCase);
-                bool isDark = s2.Equals("DARK", StringComparison.OrdinalIgnoreCase);
+                bool isBright = s2.Equals("BRIGHT", StringComparison.OrdinalIgnoreCase);
                 bool isDamp = s3.Equals("DAMP", StringComparison.OrdinalIgnoreCase);
                 bool isFlood = s3.Equals("FLOOD!", StringComparison.OrdinalIgnoreCase);
 
-                bool alert = isFull || isFlood || isDark || isDamp;
-                bool needsTruck = isFull || isFlood || isDark || isDamp;
+                bool alert = isFull || isBright || isDamp || isFlood;
+                bool needsTruck = alert;
 
                 // Set alert flag in request if not already set
                 if (request.Al == 0 && alert)
@@ -89,18 +83,17 @@ namespace KacharaManagement.API.Controllers
                     Bin3State = s3,
                     Alert = request.Al,
                     NeedsTruck = needsTruck,
+                    TruckState = null,
+                    TruckStarted = null,
+                    TruckMoving = null,
+                    TruckReached = null,
+                    TruckLatitude = null,
+                    TruckLongitude = null,
+                    TruckLocation = null,
                     Source = "Arduino",
                     CreatedBy = "system",
                     CreatedAt = DateTime.UtcNow
                 };
-
-                await _logRepo.AddAsync(new LogEntry
-                {
-                    Level = "Info",
-                    Message = "Attempting to insert SensorHistory",
-                    RequestBody = System.Text.Json.JsonSerializer.Serialize(entity),
-                    Source = "Update"
-                });
 
                 await _service.AddSensorHistoryAsync(entity);
 
@@ -110,18 +103,11 @@ namespace KacharaManagement.API.Controllers
                     alert = alert,
                     needsTruck = needsTruck,
                 };
-                await _logRepo.AddAsync(new LogEntry
-                {
-                    Level = "Info",
-                    Message = "Update response sent",
-                    ResponseBody = System.Text.Json.JsonSerializer.Serialize(resp),
-                    Source = "Update"
-                });
                 return Ok(resp);
             }
             catch (Exception ex)
             {
-                await _logRepo.AddAsync(new LogEntry
+                _ = _logRepo.AddAsync(new LogEntry
                 {
                     Level = "Error",
                     Message = ex.Message,
@@ -140,7 +126,7 @@ namespace KacharaManagement.API.Controllers
                 var latest = await _service.GetLatestStatusAsync();
                 if (latest == null)
                 {
-                    await _logRepo.AddAsync(new LogEntry
+                    _ = _logRepo.AddAsync(new LogEntry
                     {
                         Level = "Warning",
                         Message = "No data for status",
@@ -160,18 +146,19 @@ namespace KacharaManagement.API.Controllers
                     : bin1State.Equals("HALF", StringComparison.OrdinalIgnoreCase) ? "yellow"
                     : bin1State.Equals("EMPTY", StringComparison.OrdinalIgnoreCase) ? "green" : "off";
 
-                string bin2Led = bin2State.Equals("DARK", StringComparison.OrdinalIgnoreCase) ? "red"
+                string bin2Led = bin2State.Equals("BRIGHT", StringComparison.OrdinalIgnoreCase) ? "red"
                     : bin2State.Equals("DIM", StringComparison.OrdinalIgnoreCase) ? "yellow"
-                    : bin2State.Equals("BRIGHT", StringComparison.OrdinalIgnoreCase) ? "green" : "off";
+                    : bin2State.Equals("DARK", StringComparison.OrdinalIgnoreCase) ? "green" : "off";
 
                 string bin3Led = bin3State.Equals("FLOOD!", StringComparison.OrdinalIgnoreCase) ? "red"
                     : bin3State.Equals("DAMP", StringComparison.OrdinalIgnoreCase) ? "yellow"
                     : bin3State.Equals("DRY", StringComparison.OrdinalIgnoreCase) ? "green" : "off";
 
-                // needsTruck logic: s1 != "EMPTY" && s2 != "BRIGHT" && s3 != "DRY"
+                // needsTruck logic: s1 != "EMPTY" && s2 != "DARK" && s3 != "DRY"
+                // Bin2 DARK = closed = good state, so truck needed if NOT dark
                 bool needsTruck =
                     !bin1State.Equals("EMPTY", StringComparison.OrdinalIgnoreCase)
-                    && !bin2State.Equals("BRIGHT", StringComparison.OrdinalIgnoreCase)
+                    && !bin2State.Equals("DARK", StringComparison.OrdinalIgnoreCase)
                     && !bin3State.Equals("DRY", StringComparison.OrdinalIgnoreCase);
 
                 var resp = new
@@ -183,7 +170,7 @@ namespace KacharaManagement.API.Controllers
                     needsTruck = needsTruck,
                     timestamp = latest.CreatedAt.ToString("o")
                 };
-                await _logRepo.AddAsync(new LogEntry
+                _ = _logRepo.AddAsync(new LogEntry
                 {
                     Level = "Info",
                     Message = "Status response sent",
@@ -194,7 +181,7 @@ namespace KacharaManagement.API.Controllers
             }
             catch (Exception ex)
             {
-                await _logRepo.AddAsync(new LogEntry
+                _ = _logRepo.AddAsync(new LogEntry
                 {
                     Level = "Error",
                     Message = ex.Message,
@@ -203,6 +190,55 @@ namespace KacharaManagement.API.Controllers
                 });
                 return StatusCode(500, new ErrorResponse { Msg = "Internal server error" });
             }
+        }
+
+        [HttpPost("truck-status")]
+        public async Task<IActionResult> TruckStatus([FromBody] TruckMovementRequest request)
+        {
+            if (request == null)
+                return BadRequest();
+
+            if (request.Key != _apiKey)
+            {
+                _ = _logRepo.AddAsync(new LogEntry
+                {
+                    Level = "Warning",
+                    Message = "Invalid API key for truck status",
+                    RequestBody = System.Text.Json.JsonSerializer.Serialize(request),
+                    Source = "TruckStatus"
+                });
+                return Unauthorized(new { status = "ERROR", msg = "Invalid key" });
+            }
+
+            var snapshot = new TruckMovementResponse
+            {
+                Status = "OK",
+                TruckState = NormalizeTruckState(request),
+                Started = request.Started,
+                Moving = request.Moving,
+                Reached = request.Reached,
+                Latitude = request.Latitude,
+                Longitude = request.Longitude,
+                Location = request.Location
+            };
+
+            lock (TruckMovementLock)
+            {
+                TruckMovementState = snapshot;
+            }
+
+            await _service.UpdateTruckMovementAsync(request);
+
+            _ = _logRepo.AddAsync(new LogEntry
+            {
+                Level = "Info",
+                Message = $"Truck status updated: {snapshot.TruckState}",
+                ResponseBody = System.Text.Json.JsonSerializer.Serialize(snapshot),
+                Source = "TruckStatus"
+            });
+
+            await Task.CompletedTask;
+            return Ok(snapshot);
         }
 
         [HttpGet("history")]
@@ -224,10 +260,19 @@ namespace KacharaManagement.API.Controllers
                         Bin3Water = x.Bin3Water,
                         Bin3State = x.Bin3State,
                         Alert = x.Alert,
+                        NeedsTruck = x.NeedsTruck,
+                        TruckState = x.TruckState,
+                        TruckStarted = x.TruckStarted,
+                        TruckMoving = x.TruckMoving,
+                        TruckReached = x.TruckReached,
+                        TruckLatitude = x.TruckLatitude,
+                        TruckLongitude = x.TruckLongitude,
+                        TruckLocation = x.TruckLocation,
+                        Source = x.Source,
                         Timestamp = x.CreatedAt.ToString("o")
                     }).ToList()
                 };
-                await _logRepo.AddAsync(new LogEntry
+                _ = _logRepo.AddAsync(new LogEntry
                 {
                     Level = "Info",
                     Message = "History response sent",
@@ -238,7 +283,7 @@ namespace KacharaManagement.API.Controllers
             }
             catch (Exception ex)
             {
-                await _logRepo.AddAsync(new LogEntry
+                _ = _logRepo.AddAsync(new LogEntry
                 {
                     Level = "Error",
                     Message = ex.Message,
@@ -247,6 +292,38 @@ namespace KacharaManagement.API.Controllers
                 });
                 return StatusCode(500, new ErrorResponse { Msg = "Internal server error" });
             }
+        }
+
+        private static TruckMovementResponse GetTruckMovementSnapshot()
+        {
+            lock (TruckMovementLock)
+            {
+                return new TruckMovementResponse
+                {
+                    Status = TruckMovementState.Status,
+                    TruckState = TruckMovementState.TruckState,
+                    Started = TruckMovementState.Started,
+                    Moving = TruckMovementState.Moving,
+                    Reached = TruckMovementState.Reached,
+                    Latitude = TruckMovementState.Latitude,
+                    Longitude = TruckMovementState.Longitude,
+                    Location = TruckMovementState.Location
+                };
+            }
+        }
+
+        private static string NormalizeTruckState(TruckMovementRequest request)
+        {
+            if (request.Reached)
+                return "Reached";
+
+            if (request.Moving)
+                return "Moving";
+
+            if (request.Started)
+                return "Started";
+
+            return string.IsNullOrWhiteSpace(request.State) ? "Idle" : request.State;
         }
     }
 }

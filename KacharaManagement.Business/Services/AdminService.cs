@@ -1,4 +1,5 @@
 using KacharaManagement.Core.Entities;
+using KacharaManagement.Core;
 using KacharaManagement.Business.Interfaces;
 using KacharaManagement.Repository.Interfaces;
 using System.Collections.Generic;
@@ -33,9 +34,9 @@ namespace KacharaManagement.Business.Services
             return true;
         }
 
-        public async Task<List<LogEntry>> GetLogsAsync(int limit = 100)
+        public async Task<LogPageResponse> GetLogsAsync(int page = 1, int pageSize = 20, string? level = null, string? source = null, string? search = null)
         {
-            return await _logRepo.GetAllAsync(limit);
+            return await _logRepo.GetPagedAsync(page, pageSize, level, source, search);
         }
     }
 }
