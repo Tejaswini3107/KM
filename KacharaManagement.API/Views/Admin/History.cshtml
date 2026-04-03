@@ -1,0 +1,284 @@
+@{
+    ViewData["Title"] = "Admin History";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin History</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        :root {
+            --ink: #0f172a;
+            --muted: #475569;
+            --panel: rgba(255,255,255,.95);
+            --border: rgba(148,163,184,.2);
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, rgba(15,118,110,.2), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(37,99,235,.14), transparent 25%),
+                linear-gradient(135deg, #e2f7f6 0%, #f8fafc 42%, #eef2ff 100%);
+            color: var(--ink);
+        }
+
+        .glass-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: 0 20px 55px rgba(15, 23, 42, .1);
+            backdrop-filter: blur(12px);
+        }
+
+        .metric {
+            border-radius: 16px;
+            padding: 1rem;
+            background: #f8fafc;
+            border: 1px solid rgba(148,163,184,.16);
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: .83rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -.03em;
+        }
+
+        .sticky-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 15;
+            background: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4 py-lg-5">
+        <div class="glass-card p-3 p-lg-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <div>
+                    <h2 class="mb-1 fw-bold">History</h2>
+                    <div class="text-muted">Real-time sensor history with paging and filters.</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" id="refreshBtn" type="button" onclick="loadHistory()">Refresh now</button>
+                    <a class="btn btn-outline-primary" href="/admin/dashboard">Dashboard</a>
+                    <a class="btn btn-dark" href="/admin/logs">Logs</a>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="metric h-100">
+                        <div class="metric-label">Records</div>
+                        <div class="metric-value" id="countMetric">0</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric h-100">
+                        <div class="metric-label">Alerts</div>
+                        <div class="metric-value" id="alertMetric">0</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric h-100">
+                        <div class="metric-label">Needs truck</div>
+                        <div class="metric-value" id="truckMetric">0</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric h-100">
+                        <div class="metric-label">Last refresh</div>
+                        <div class="metric-value" id="refreshMetric">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3 sticky-toolbar">
+                <div class="col-md-3">
+                    <select id="alertFilter" class="form-select" onchange="applyFilters()">
+                        <option value="">All alerts</option>
+                        <option value="true">Alert only</option>
+                        <option value="false">No alert</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="truckFilter" class="form-select" onchange="applyFilters()">
+                        <option value="">All truck states</option>
+                        <option value="true">Needs truck</option>
+                        <option value="false">No truck</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input id="sourceFilter" class="form-control" placeholder="Filter by source" oninput="debouncedLoad()" />
+                </div>
+                <div class="col-md-3">
+                    <input id="searchFilter" class="form-control" placeholder="Search states, truck, location" oninput="debouncedLoad()" />
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <select id="bin1Filter" class="form-select" onchange="applyFilters()">
+                        <option value="">All Bin1 states</option>
+                        <option value="EMPTY">EMPTY</option>
+                        <option value="HALF">HALF</option>
+                        <option value="FULL">FULL</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select id="bin2Filter" class="form-select" onchange="applyFilters()">
+                        <option value="">All Bin2 states</option>
+                        <option value="DARK">DARK</option>
+                        <option value="DIM">DIM</option>
+                        <option value="BRIGHT">BRIGHT</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select id="bin3Filter" class="form-select" onchange="applyFilters()">
+                        <option value="">All Bin3 states</option>
+                        <option value="DRY">DRY</option>
+                        <option value="DAMP">DAMP</option>
+                        <option value="FLOOD!">FLOOD!</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-3">
+                    <select id="pageSizeFilter" class="form-select" onchange="applyFilters()">
+                        <option value="10">10 / page</option>
+                        <option value="20" selected>20 / page</option>
+                        <option value="50">50 / page</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Time</th>
+                            <th>Bin1</th>
+                            <th>Bin2</th>
+                            <th>Bin3</th>
+                            <th>Alert</th>
+                            <th>Truck</th>
+                            <th>Location</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTable"></tbody>
+                </table>
+            </div>
+
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+                <div class="text-muted" id="pageInfo">Loading...</div>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary" id="prevBtn" onclick="changePage(-1)">Previous</button>
+                    <button class="btn btn-outline-secondary" id="nextBtn" onclick="changePage(1)">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let refreshTimer;
+        let debounceTimer;
+
+        function queryParams() {
+            return {
+                page: currentPage,
+                pageSize: Number(document.getElementById('pageSizeFilter').value),
+                source: document.getElementById('sourceFilter').value.trim(),
+                alert: document.getElementById('alertFilter').value,
+                needsTruck: document.getElementById('truckFilter').value,
+                bin1State: document.getElementById('bin1Filter').value,
+                bin2State: document.getElementById('bin2Filter').value,
+                bin3State: document.getElementById('bin3Filter').value,
+                search: document.getElementById('searchFilter').value.trim()
+            };
+        }
+
+        function appendValue(value, fallback = '--') {
+            return value === null || value === undefined || value === '' ? fallback : value;
+        }
+
+        async function loadHistory() {
+            const query = queryParams();
+            const params = new URLSearchParams();
+            Object.entries(query).forEach(([key, value]) => {
+                if (value !== '' && value !== null && value !== undefined) {
+                    params.append(key, value);
+                }
+            });
+
+            const res = await fetch(`/api/admin/history?${params.toString()}`);
+            const data = await res.json();
+
+            const table = document.getElementById('historyTable');
+            table.innerHTML = '';
+
+            (data.items || []).forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${appendValue(item.timestamp)}</td>
+                    <td>${appendValue(item.bin1State)} (${appendValue(item.bin1Fill, 0)})</td>
+                    <td>${appendValue(item.bin2State)} (${appendValue(item.bin2Light, 0)})</td>
+                    <td>${appendValue(item.bin3State)} (${appendValue(item.bin3Water, 0)})</td>
+                    <td><span class="badge text-bg-${item.alert === 1 ? 'danger' : 'secondary'}">${item.alert === 1 ? 'Alert' : 'Clear'}</span></td>
+                    <td>
+                        <div><span class="badge text-bg-${item.needsTruck ? 'warning' : 'success'}">${item.needsTruck ? 'Needs truck' : 'No truck'}</span></div>
+                        <div class="small text-muted mt-1">${appendValue(item.truckState)}</div>
+                    </td>
+                    <td class="small text-muted">${appendValue(item.truckLocation)}</td>
+                    <td>${appendValue(item.source)}</td>
+                `;
+                table.appendChild(row);
+            });
+
+            currentPage = data.page || 1;
+            totalPages = data.totalPages || 1;
+            document.getElementById('countMetric').textContent = `${data.totalCount || 0}`;
+            document.getElementById('alertMetric').textContent = `${(data.items || []).filter(x => x.alert === 1).length}`;
+            document.getElementById('truckMetric').textContent = `${(data.items || []).filter(x => x.needsTruck).length}`;
+            document.getElementById('refreshMetric').textContent = new Date().toLocaleTimeString();
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages} | ${data.totalCount || 0} total records`;
+            document.getElementById('prevBtn').disabled = currentPage <= 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+            document.getElementById('refreshBtn').textContent = `Refresh now (${new Date().toLocaleTimeString()})`;
+        }
+
+        function changePage(delta) {
+            const nextPage = currentPage + delta;
+            if (nextPage < 1 || nextPage > totalPages) {
+                return;
+            }
+            currentPage = nextPage;
+            loadHistory();
+        }
+
+        function applyFilters() {
+            currentPage = 1;
+            loadHistory();
+        }
+
+        function debouncedLoad() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(applyFilters, 350);
+        }
+
+        loadHistory();
+        refreshTimer = setInterval(loadHistory, 10000);
+    </script>
+</body>
+</html>

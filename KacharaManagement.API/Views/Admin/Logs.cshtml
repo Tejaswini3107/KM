@@ -8,37 +8,144 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Logs</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #f8fafc 50%, #f8fafc 100%);
+            min-height: 100vh;
+        }
+        .logs-shell {
+            background: rgba(255,255,255,.95);
+            border-radius: 22px;
+            box-shadow: 0 20px 50px rgba(15,23,42,.15);
+        }
+        .sticky-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: inherit;
+        }
+    </style>
 </head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <h2 class="mb-4">System Logs</h2>
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>Time</th>
-                    <th>Level</th>
-                    <th>Message</th>
-                    <th>Source</th>
-                </tr>
-            </thead>
-            <tbody id="logTable">
-            </tbody>
-        </table>
+<body>
+    <div class="container py-4 py-lg-5">
+        <div class="logs-shell p-3 p-lg-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div>
+                    <h2 class="mb-1 fw-bold">System Logs</h2>
+                    <div class="text-muted">Live feed with server-side filters, paging, and auto-refresh.</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" id="refreshBtn" type="button" onclick="loadLogs()">Refresh now</button>
+                    <a class="btn btn-dark" href="/admin/dashboard">Back to Dashboard</a>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3 sticky-toolbar">
+                <div class="col-md-3">
+                    <select id="levelFilter" class="form-select" onchange="applyFilters()">
+                        <option value="">All Levels</option>
+                        <option value="Info">Info</option>
+                        <option value="Warning">Warning</option>
+                        <option value="Error">Error</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input id="sourceFilter" class="form-control" placeholder="Filter by source" oninput="debouncedLoad()" />
+                </div>
+                <div class="col-md-4">
+                    <input id="searchFilter" class="form-control" placeholder="Search message, request or response" oninput="debouncedLoad()" />
+                </div>
+                <div class="col-md-2">
+                    <select id="pageSizeFilter" class="form-select" onchange="applyFilters()">
+                        <option value="10">10 / page</option>
+                        <option value="20" selected>20 / page</option>
+                        <option value="50">50 / page</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Time</th>
+                            <th>Level</th>
+                            <th>Message</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTable"></tbody>
+                </table>
+            </div>
+
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+                <div class="text-muted" id="pageInfo">Loading...</div>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary" id="prevBtn" onclick="changePage(-1)">Previous</button>
+                    <button class="btn btn-outline-secondary" id="nextBtn" onclick="changePage(1)">Next</button>
+                </div>
+            </div>
+        </div>
     </div>
     <script>
-        async function fetchLogs() {
-            const res = await fetch('/api/logs?limit=100');
-            const data = await res.json();
-            return data;
+        let currentPage = 1;
+        let totalPages = 1;
+        let refreshHandle;
+        let debounceHandle;
+
+        function currentQuery() {
+            return {
+                page: currentPage,
+                pageSize: Number(document.getElementById('pageSizeFilter').value),
+                level: document.getElementById('levelFilter').value,
+                source: document.getElementById('sourceFilter').value.trim(),
+                search: document.getElementById('searchFilter').value.trim()
+            };
         }
-        fetchLogs().then(logs => {
+
+        async function loadLogs() {
+            const query = currentQuery();
+            const params = new URLSearchParams(query);
+            const res = await fetch(`/api/admin/logs?${params.toString()}`);
+            const data = await res.json();
             const table = document.getElementById('logTable');
-            logs.forEach(log => {
+            table.innerHTML = '';
+
+            (data.items || []).forEach(log => {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${log.createdAt}</td><td>${log.level}</td><td>${log.message}</td><td>${log.source}</td>`;
+                row.innerHTML = `<td>${log.createdAt}</td><td><span class="badge text-bg-${log.level === 'Error' ? 'danger' : log.level === 'Warning' ? 'warning' : 'secondary'}">${log.level}</span></td><td>${log.message}</td><td>${log.source}</td>`;
                 table.appendChild(row);
             });
-        });
+
+            totalPages = data.totalPages || 1;
+            currentPage = data.page || 1;
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages} | ${data.totalCount || 0} total logs`;
+            document.getElementById('prevBtn').disabled = currentPage <= 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+            document.getElementById('refreshBtn').textContent = `Refresh now (${new Date().toLocaleTimeString()})`;
+        }
+
+        function changePage(delta) {
+            const nextPage = currentPage + delta;
+            if (nextPage < 1 || nextPage > totalPages) {
+                return;
+            }
+            currentPage = nextPage;
+            loadLogs();
+        }
+
+        function applyFilters() {
+            currentPage = 1;
+            loadLogs();
+        }
+
+        function debouncedLoad() {
+            clearTimeout(debounceHandle);
+            debounceHandle = setTimeout(applyFilters, 350);
+        }
+
+        loadLogs();
+        refreshHandle = setInterval(loadLogs, 8000);
     </script>
 </body>
 </html>
