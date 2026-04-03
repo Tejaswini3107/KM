@@ -30,6 +30,15 @@ This project is a .NET 10 backend for a smart waste management system. It integr
    The API will run on port 5000 by default.
 4. Access Swagger UI at: [http://localhost:5000/swagger](http://localhost:5000/swagger)
 
+### Hot Reload / Watch Mode
+
+For local development with hot reload, run:
+```bash
+dotnet watch --project KacharaManagement.API run
+```
+
+In VS Code, use the task named `watch: api` to start the same hot reload loop.
+
 ## Docker Deployment
 - The app is Dockerized and exposes port 5000.
 - Example build & run:

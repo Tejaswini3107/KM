@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "watch: api",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "watch",
+        "--project",
+        "KacharaManagement.API",
+        "run"
+      ],
+      "isBackground": true,
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}
