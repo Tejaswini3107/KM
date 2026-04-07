@@ -44,14 +44,23 @@ namespace KacharaManagement.Business.Services
             }
         }
 
-        public async Task UpdateTruckMovementAsync(TruckMovementRequest request)
+        public async Task<bool> UpdateTruckMovementAsync(TruckMovementRequest request)
         {
             try
             {
-                var latest = await _repo.GetLatestNeedsTruckAsync() ?? await _repo.GetLatestAsync();
+                SensorHistory? latest;
+                if (request.HistoryId.HasValue)
+                {
+                    latest = await _repo.GetByIdAsync(request.HistoryId.Value);
+                }
+                else
+                {
+                    latest = await _repo.GetLatestNeedsTruckAsync() ?? await _repo.GetLatestAsync();
+                }
+
                 if (latest == null)
                 {
-                    return;
+                    return false;
                 }
 
                 latest.TruckState = NormalizeTruckState(request);
@@ -63,6 +72,7 @@ namespace KacharaManagement.Business.Services
                 latest.TruckLocation = request.Location;
 
                 await _repo.UpdateAsync(latest);
+                return true;
             }
             catch (Exception ex)
             {

@@ -163,6 +163,7 @@ namespace KacharaManagement.API.Controllers
 
                 var resp = new
                 {
+                    id = latest.Id,
                     bin1 = new { fill = latest.Bin1Fill, state = latest.Bin1State, led = bin1Led },
                     bin2 = new { light = latest.Bin2Light, state = latest.Bin2State, led = bin2Led },
                     bin3 = new { water = latest.Bin3Water, state = latest.Bin3State, led = bin3Led },
@@ -198,6 +199,11 @@ namespace KacharaManagement.API.Controllers
             if (request == null)
                 return BadRequest();
 
+            if (request.HistoryId.HasValue && request.HistoryId.Value <= 0)
+            {
+                return BadRequest(new { status = "ERROR", msg = "historyId must be greater than 0" });
+            }
+
             if (request.Key != _apiKey)
             {
                 _ = _logRepo.AddAsync(new LogEntry
@@ -227,7 +233,16 @@ namespace KacharaManagement.API.Controllers
                 TruckMovementState = snapshot;
             }
 
-            await _service.UpdateTruckMovementAsync(request);
+            var updated = await _service.UpdateTruckMovementAsync(request);
+            if (!updated)
+            {
+                if (request.HistoryId.HasValue)
+                {
+                    return NotFound(new { status = "ERROR", msg = $"History record with id {request.HistoryId.Value} was not found" });
+                }
+
+                return NotFound(new { status = "ERROR", msg = "No history record available to update" });
+            }
 
             _ = _logRepo.AddAsync(new LogEntry
             {

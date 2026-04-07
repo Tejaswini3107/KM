@@ -38,6 +38,7 @@ namespace KacharaManagement.Core
     public class TruckMovementRequest
     {
         public string Key { get; set; } = string.Empty;
+        public int? HistoryId { get; set; }
         public string State { get; set; } = "Idle";
         public bool Started { get; set; }
         public bool Moving { get; set; }

@@ -9,6 +9,7 @@ namespace KacharaManagement.Repository.Interfaces
     {
         Task AddAsync(SensorHistory entity);
         Task UpdateAsync(SensorHistory entity);
+        Task<SensorHistory?> GetByIdAsync(int id);
         Task<SensorHistory?> GetLatestAsync();
         Task<SensorHistory?> GetLatestNeedsTruckAsync();
         Task<List<SensorHistory>> GetHistoryAsync(int limit);

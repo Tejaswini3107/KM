@@ -31,6 +31,12 @@ namespace KacharaManagement.Repository.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task<SensorHistory?> GetByIdAsync(int id)
+        {
+            return await _context.SensorHistories
+                .FirstOrDefaultAsync(x => x.Id == id);
+        }
+
         public async Task<SensorHistory?> GetLatestAsync()
         {
             return await _context.SensorHistories
