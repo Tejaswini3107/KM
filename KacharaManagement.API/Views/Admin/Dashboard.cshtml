@@ -212,6 +212,8 @@
         </div>
     </div>
     <script>
+        const EUROPE_TIME_ZONE = 'Europe/Paris';
+
         let bin1Chart;
         let bin2Chart;
         let bin3Chart;
@@ -225,7 +227,39 @@
         }
 
         function buildSeries(history, selector, valueSelector) {
-            return history.map(x => ({ timestamp: x.timestamp, value: valueSelector(x) }));
+            return history.map(x => ({ timestamp: formatEuropeDateTime(x.timestamp), value: valueSelector(x) }));
+        }
+
+        function formatEuropeDateTime(value) {
+            if (!value) {
+                return '--';
+            }
+
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return value;
+            }
+
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: EUROPE_TIME_ZONE,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).format(date);
+        }
+
+        function europeNowTime() {
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: EUROPE_TIME_ZONE,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).format(new Date());
         }
 
         function escapeHtml(value) {
@@ -307,7 +341,7 @@
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${escapeHtml(item.timestamp || '--')}</td>
+                    <td>${escapeHtml(formatEuropeDateTime(item.timestamp))}</td>
                     <td><span class="badge text-bg-${badgeClass}">${escapeHtml(stateLabel)}</span></td>
                     <td class="small text-muted">${escapeHtml(flags)}</td>
                     <td>${escapeHtml(item.truckLocation || '--')}</td>
@@ -348,7 +382,7 @@
             document.getElementById('truckDetail').textContent = latest.truckLocation || (latest.truckReached ? 'Truck reached target' : 'No truck location set');
             document.getElementById('logMetric').textContent = `${overview.logCount || 0}`;
             document.getElementById('logDetail').textContent = overview.latestLog ? `${overview.latestLog.level}: ${overview.latestLog.message}` : 'No logs yet';
-            document.getElementById('lastUpdatedBtn').textContent = `Refresh now (${new Date().toLocaleTimeString()})`;
+            document.getElementById('lastUpdatedBtn').textContent = `Refresh now (${europeNowTime()})`;
 
             const bin1Series = buildSeries(items, 'timestamp', x => x.bin1Fill);
             const bin2Series = buildSeries(items, 'timestamp', x => x.bin2Light);

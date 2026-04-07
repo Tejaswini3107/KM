@@ -198,10 +198,44 @@
     </div>
 
     <script>
+        const EUROPE_TIME_ZONE = 'Europe/Paris';
+
         let currentPage = 1;
         let totalPages = 1;
         let refreshTimer;
         let debounceTimer;
+
+        function formatEuropeDateTime(value) {
+            if (!value) {
+                return '--';
+            }
+
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return value;
+            }
+
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: EUROPE_TIME_ZONE,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).format(date);
+        }
+
+        function europeNowTime() {
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: EUROPE_TIME_ZONE,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).format(new Date());
+        }
 
         function queryParams() {
             return {
@@ -240,7 +274,7 @@
             (data.items || []).forEach(item => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${appendValue(item.timestamp)}</td>
+                    <td>${formatEuropeDateTime(item.timestamp)}</td>
                     <td>${appendValue(item.bin1State)} (${appendValue(item.bin1Fill, 0)})</td>
                     <td>${appendValue(item.bin2State)} (${appendValue(item.bin2Light, 0)})</td>
                     <td>${appendValue(item.bin3State)} (${appendValue(item.bin3Water, 0)})</td>
@@ -260,11 +294,11 @@
             document.getElementById('countMetric').textContent = `${data.totalCount || 0}`;
             document.getElementById('alertMetric').textContent = `${(data.items || []).filter(x => x.alert === 1).length}`;
             document.getElementById('truckMetric').textContent = `${(data.items || []).filter(x => x.needsTruck).length}`;
-            document.getElementById('refreshMetric').textContent = new Date().toLocaleTimeString();
+            document.getElementById('refreshMetric').textContent = europeNowTime();
             document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages} | ${data.totalCount || 0} total records`;
             document.getElementById('prevBtn').disabled = currentPage <= 1;
             document.getElementById('nextBtn').disabled = currentPage >= totalPages;
-            document.getElementById('refreshBtn').textContent = `Refresh now (${new Date().toLocaleTimeString()})`;
+            document.getElementById('refreshBtn').textContent = `Refresh now (${europeNowTime()})`;
         }
 
         function changePage(delta) {
