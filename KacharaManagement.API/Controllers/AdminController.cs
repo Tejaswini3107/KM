@@ -35,9 +35,9 @@ namespace KacharaManagement.API.Controllers
         }
 
         [HttpGet("history")]
-        public async Task<IActionResult> History([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? source = null, [FromQuery] bool? alert = null, [FromQuery] bool? needsTruck = null, [FromQuery] string? bin1State = null, [FromQuery] string? bin2State = null, [FromQuery] string? bin3State = null, [FromQuery] string? search = null)
+        public async Task<IActionResult> History([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? source = null, [FromQuery] bool? alert = null, [FromQuery] bool? needsTruck = null, [FromQuery] bool? truckStatusUpdated = null, [FromQuery] string? bin1State = null, [FromQuery] string? bin2State = null, [FromQuery] string? bin3State = null, [FromQuery] string? search = null)
         {
-            var history = await _gothamService.GetPagedHistoryAsync(page, pageSize, source, alert, needsTruck, bin1State, bin2State, bin3State, search);
+            var history = await _gothamService.GetPagedHistoryAsync(page, pageSize, source, alert, needsTruck, truckStatusUpdated, bin1State, bin2State, bin3State, search);
             return Ok(history);
         }
 

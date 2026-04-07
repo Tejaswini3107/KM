@@ -73,6 +73,10 @@
             gap: .45rem;
             margin-top: .75rem;
         }
+        .table-wrap {
+            max-height: 340px;
+            overflow: auto;
+        }
     </style>
 </head>
 <body>
@@ -142,7 +146,6 @@
                 <div class="glass-card p-3 p-lg-4 h-100">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0">Bin 1 Fill</h5>
-                        <span class="badge text-bg-success" id="alertBadge">Live</span>
                     </div>
                     <canvas id="bin1Chart"></canvas>
                 </div>
@@ -151,7 +154,6 @@
                 <div class="glass-card p-3 p-lg-4 h-100">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0">Bin 2 Light</h5>
-                        <span class="badge text-bg-warning">Bin2</span>
                     </div>
                     <canvas id="bin2Chart"></canvas>
                 </div>
@@ -171,6 +173,43 @@
                 </div>
             </div>
         </div>
+
+        <div class="row g-4 mt-1">
+            <div class="col-12">
+                <div class="glass-card p-3 p-lg-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                        <h5 class="mb-0">Truck Status Updates</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            <select id="truckStatusFilter" class="form-select" style="min-width: 190px;" onchange="renderTruckStatusTable()">
+                                <option value="all">All updates</option>
+                                <option value="started">Started</option>
+                                <option value="moving">Moving</option>
+                                <option value="reached">Reached</option>
+                                <option value="needsTruck">Needs truck</option>
+                            </select>
+                            <input id="truckStatusSearch" class="form-control" style="min-width: 230px;" placeholder="Search state or location" oninput="renderTruckStatusTable()" />
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light" style="position: sticky; top: 0;">
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                    <th>Flags</th>
+                                    <th>Location</th>
+                                    <th>Source</th>
+                                </tr>
+                            </thead>
+                            <tbody id="truckStatusTableBody">
+                                <tr><td colspan="5" class="text-muted">Loading updates...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <script>
         let bin1Chart;
@@ -178,6 +217,7 @@
         let bin3Chart;
         let alertChart;
         let refreshTimer;
+        let truckStatusRows = [];
 
         async function fetchOverview() {
             const res = await fetch('/api/admin/overview?historyLimit=60');
@@ -186,6 +226,95 @@
 
         function buildSeries(history, selector, valueSelector) {
             return history.map(x => ({ timestamp: x.timestamp, value: valueSelector(x) }));
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function isTruckStatusUpdated(item) {
+            if (!item) {
+                return false;
+            }
+
+            return Boolean(
+                (item.truckState && String(item.truckState).trim() !== '') ||
+                item.truckStarted === true ||
+                item.truckMoving === true ||
+                item.truckReached === true ||
+                (item.truckLocation && String(item.truckLocation).trim() !== '')
+            );
+        }
+
+        function matchesTruckFilter(item, selectedFilter, searchTerm) {
+            const filter = selectedFilter || 'all';
+            const search = (searchTerm || '').toLowerCase();
+
+            if (filter === 'started' && item.truckStarted !== true) {
+                return false;
+            }
+
+            if (filter === 'moving' && item.truckMoving !== true) {
+                return false;
+            }
+
+            if (filter === 'reached' && item.truckReached !== true) {
+                return false;
+            }
+
+            if (filter === 'needsTruck' && item.needsTruck !== true) {
+                return false;
+            }
+
+            if (!search) {
+                return true;
+            }
+
+            const haystack = [item.truckState, item.truckLocation, item.source]
+                .map(x => String(x || '').toLowerCase())
+                .join(' ');
+
+            return haystack.includes(search);
+        }
+
+        function renderTruckStatusTable() {
+            const tableBody = document.getElementById('truckStatusTableBody');
+            const selectedFilter = document.getElementById('truckStatusFilter').value;
+            const searchTerm = document.getElementById('truckStatusSearch').value;
+
+            const filteredRows = truckStatusRows.filter(item => matchesTruckFilter(item, selectedFilter, searchTerm));
+            tableBody.innerHTML = '';
+
+            if (filteredRows.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-muted">No truck status updates for the selected filter.</td></tr>';
+                return;
+            }
+
+            filteredRows.forEach(item => {
+                const stateLabel = item.truckState || (item.truckReached ? 'Reached' : item.truckMoving ? 'Moving' : item.truckStarted ? 'Started' : 'Idle');
+                const badgeClass = item.truckReached ? 'success' : item.truckMoving ? 'warning' : item.truckStarted ? 'info' : 'secondary';
+                const flags = [
+                    item.truckStarted ? 'Started' : null,
+                    item.truckMoving ? 'Moving' : null,
+                    item.truckReached ? 'Reached' : null,
+                    item.needsTruck ? 'Needs truck' : null
+                ].filter(Boolean).join(', ') || 'None';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${escapeHtml(item.timestamp || '--')}</td>
+                    <td><span class="badge text-bg-${badgeClass}">${escapeHtml(stateLabel)}</span></td>
+                    <td class="small text-muted">${escapeHtml(flags)}</td>
+                    <td>${escapeHtml(item.truckLocation || '--')}</td>
+                    <td>${escapeHtml(item.source || '--')}</td>
+                `;
+                tableBody.appendChild(row);
+            });
         }
 
         function makeChart(ctx, label, data, color, chartInstance) {
@@ -225,6 +354,9 @@
             const bin2Series = buildSeries(items, 'timestamp', x => x.bin2Light);
             const bin3Series = buildSeries(items, 'timestamp', x => x.bin3Water);
             const alertSeries = buildSeries(items, 'timestamp', x => x.alert);
+
+            truckStatusRows = items.filter(isTruckStatusUpdated);
+            renderTruckStatusTable();
 
             bin1Chart = makeChart(document.getElementById('bin1Chart').getContext('2d'), 'Bin 1 Fill', bin1Series, '#b91c1c', bin1Chart);
             bin2Chart = makeChart(document.getElementById('bin2Chart').getContext('2d'), 'Bin 2 Light', bin2Series, '#0f766e', bin2Chart);

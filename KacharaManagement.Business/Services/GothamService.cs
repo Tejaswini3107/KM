@@ -134,11 +134,11 @@ namespace KacharaManagement.Business.Services
             }
         }
 
-        public async Task<HistoryPageResponse> GetPagedHistoryAsync(int page = 1, int pageSize = 20, string? source = null, bool? alert = null, bool? needsTruck = null, string? bin1State = null, string? bin2State = null, string? bin3State = null, string? search = null)
+        public async Task<HistoryPageResponse> GetPagedHistoryAsync(int page = 1, int pageSize = 20, string? source = null, bool? alert = null, bool? needsTruck = null, bool? truckStatusUpdated = null, string? bin1State = null, string? bin2State = null, string? bin3State = null, string? search = null)
         {
             try
             {
-                return await _repo.GetPagedHistoryAsync(page, pageSize, source, alert, needsTruck, bin1State, bin2State, bin3State, search);
+                return await _repo.GetPagedHistoryAsync(page, pageSize, source, alert, needsTruck, truckStatusUpdated, bin1State, bin2State, bin3State, search);
             }
             catch (Exception ex)
             {

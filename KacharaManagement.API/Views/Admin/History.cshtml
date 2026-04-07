@@ -117,11 +117,29 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <input id="sourceFilter" class="form-control" placeholder="Filter by source" oninput="debouncedLoad()" />
+                    <select id="truckStatusUpdatedFilter" class="form-select" onchange="applyFilters()">
+                        <option value="">All truck updates</option>
+                        <option value="true">Truck status updated</option>
+                        <option value="false">No truck status update</option>
+                    </select>
                 </div>
                 <div class="col-md-3">
+                    <input id="sourceFilter" class="form-control" placeholder="Filter by source" oninput="debouncedLoad()" />
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
                     <input id="searchFilter" class="form-control" placeholder="Search states, truck, location" oninput="debouncedLoad()" />
                 </div>
+                <div class="col-md-2">
+                    <select id="pageSizeFilter" class="form-select" onchange="applyFilters()">
+                        <option value="10">10 / page</option>
+                        <option value="20" selected>20 / page</option>
+                        <option value="50">50 / page</option>
+                    </select>
+                </div>
+                <div class="col-md-4"></div>
             </div>
 
             <div class="row g-2 mb-3">
@@ -147,16 +165,6 @@
                         <option value="DRY">DRY</option>
                         <option value="DAMP">DAMP</option>
                         <option value="FLOOD!">FLOOD!</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="row g-2 mb-3">
-                <div class="col-md-3">
-                    <select id="pageSizeFilter" class="form-select" onchange="applyFilters()">
-                        <option value="10">10 / page</option>
-                        <option value="20" selected>20 / page</option>
-                        <option value="50">50 / page</option>
                     </select>
                 </div>
             </div>
@@ -202,6 +210,7 @@
                 source: document.getElementById('sourceFilter').value.trim(),
                 alert: document.getElementById('alertFilter').value,
                 needsTruck: document.getElementById('truckFilter').value,
+                truckStatusUpdated: document.getElementById('truckStatusUpdatedFilter').value,
                 bin1State: document.getElementById('bin1Filter').value,
                 bin2State: document.getElementById('bin2Filter').value,
                 bin3State: document.getElementById('bin3Filter').value,

@@ -54,7 +54,7 @@ namespace KacharaManagement.Repository.Repositories
                 .ToListAsync();
         }
 
-        public async Task<HistoryPageResponse> GetPagedHistoryAsync(int page = 1, int pageSize = 20, string? source = null, bool? alert = null, bool? needsTruck = null, string? bin1State = null, string? bin2State = null, string? bin3State = null, string? search = null)
+        public async Task<HistoryPageResponse> GetPagedHistoryAsync(int page = 1, int pageSize = 20, string? source = null, bool? alert = null, bool? needsTruck = null, bool? truckStatusUpdated = null, string? bin1State = null, string? bin2State = null, string? bin3State = null, string? search = null)
         {
             if (page < 1)
                 page = 1;
@@ -77,6 +77,23 @@ namespace KacharaManagement.Repository.Repositories
             if (needsTruck.HasValue)
             {
                 query = query.Where(x => x.NeedsTruck == needsTruck.Value);
+            }
+
+            if (truckStatusUpdated.HasValue)
+            {
+                query = truckStatusUpdated.Value
+                    ? query.Where(x =>
+                        (x.TruckState != null && x.TruckState != "") ||
+                        x.TruckStarted == true ||
+                        x.TruckMoving == true ||
+                        x.TruckReached == true ||
+                        (x.TruckLocation != null && x.TruckLocation != ""))
+                    : query.Where(x =>
+                        (x.TruckState == null || x.TruckState == "") &&
+                        x.TruckStarted != true &&
+                        x.TruckMoving != true &&
+                        x.TruckReached != true &&
+                        (x.TruckLocation == null || x.TruckLocation == ""));
             }
 
             if (!string.IsNullOrWhiteSpace(bin1State))
